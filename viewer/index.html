@@ -3,10 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>DATEX</title>
+    <link rel='stylesheet' href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.css' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.js'></script>
     <script src="parseXML.js"></script>
     <script src="readXML.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+        }
+    </style>
 </head>
-<body>
+<body id="map">
 <script>
   readXML('predefinedLocations_camaras_content.xml', function (response) {
     // console.log(response)
@@ -28,8 +36,69 @@
       })
     }
 
-    console.log(geojson)
-    return geojson
+    var map = new mapboxgl.Map({
+        container: 'map', // id del elemento HTML que contendrá el mapa
+        style: 'mapbox/positron.json', // Ubicación del estilo
+        "center": [-4.488, 39.674],
+        "zoom": 5,
+        "bearing": 0,
+        "pitch": 0,
+        hash: true // Permite ir guardando la posición del mapa en la URL
+    });
+
+    // Agrega controles de navegación (zoom, rotación) al mapa:
+    map.addControl(new mapboxgl.NavigationControl());
+
+    map.on('load', function() {
+      map.addSource("camaras", {
+        "type": "geojson",
+        "data": geojson
+      })
+
+      map.addLayer({
+        "id": "camera-locations",
+        "source": "camaras",
+        "type": "circle",
+        "paint": {
+          "circle-color": "#00F"
+        }
+      })
+    })
+
+    // Create a popup, but don't add it to the map yet.
+    var popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+
+    map.on('mouseenter', 'camera-locations', function(e) {
+        // Change the cursor style as a UI indicator.
+        map.getCanvas().style.cursor = 'pointer';
+
+        var coordinates = e.features[0].geometry.coordinates.slice();
+        var description = e.features[0].properties.name;
+
+        // Ensure that if the map is zoomed out such that multiple
+        // copies of the feature are visible, the popup appears
+        // over the copy being pointed to.
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
+
+        // Populate the popup and set its coordinates
+        // based on the feature found.
+        popup.setLngLat(coordinates)
+            .setHTML(description)
+            .addTo(map);
+    });
+
+    map.on('mouseleave', 'camera-locations', function() {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+    });
+
+    //console.log(geojson)
+    //return geojson
   })
 </script>
 </body>
