@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>DATEX</title>
-    <link rel='stylesheet' href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.css' />
+    <link rel='stylesheet' href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.css'/>
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.js'></script>
     <script src="parseXML.js"></script>
     <script src="readXML.js"></script>
@@ -16,89 +16,225 @@
 </head>
 <body id="map">
 <script>
-  readXML('predefinedLocations_camaras_content.xml', function (response) {
-    // console.log(response)
-    const locations = response.d2LogicalModel.payloadPublication.predefinedLocationSet.predefinedLocation
-    const geojson = {
-      'type': 'FeatureCollection',
-      'features': locations.map(function (location) {
-        return {
-          'type': 'Feature',
-          'properties': {
-            'id': location.id,
-            'name': location.predefinedLocationName.value['#text']
-          },
-          'geometry': {
-            'type': 'Point',
-            'coordinates': [parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.longitude), parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.latitude)]
+  var map = new mapboxgl.Map({
+    container: 'map', // id del elemento HTML que contendrá el mapa
+    style: 'mapbox/positron.json', // Ubicación del estilo
+    'center': [-4.488, 39.674],
+    'zoom': 5,
+    'bearing': 0,
+    'pitch': 0,
+    hash: true // Permite ir guardando la posición del mapa en la URL
+  })
+
+  // Agrega controles de navegación (zoom, rotación) al mapa:
+  map.addControl(new mapboxgl.NavigationControl())
+
+  map.on('load', function () {
+    readXML('predefinedLocations_camaras_cctv_content.xml', function (response) {
+      // console.log(response)
+      const records = response.d2LogicalModel.payloadPublication.genericPublicationExtension.cctvSiteTablePublication.cctvCameraList.cctvCameraMetadataRecord
+      const geojson = {
+        'type': 'FeatureCollection',
+        'features': records.map(function (record) {
+          return {
+            'type': 'Feature',
+            'properties': {
+              'id': record.cctvCameraIdentification,
+              'url': record.cctvStillImageService.stillImageUrl.urlLinkAddress
+            },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [parseFloat(record.cctvCameraLocation.locationForDisplay.longitude), parseFloat(record.cctvCameraLocation.locationForDisplay.latitude)]
+            }
           }
-        }
-      })
-    }
+        })
+      }
 
-    var map = new mapboxgl.Map({
-        container: 'map', // id del elemento HTML que contendrá el mapa
-        style: 'mapbox/positron.json', // Ubicación del estilo
-        "center": [-4.488, 39.674],
-        "zoom": 5,
-        "bearing": 0,
-        "pitch": 0,
-        hash: true // Permite ir guardando la posición del mapa en la URL
-    });
-
-    // Agrega controles de navegación (zoom, rotación) al mapa:
-    map.addControl(new mapboxgl.NavigationControl());
-
-    map.on('load', function() {
-      map.addSource("camaras", {
-        "type": "geojson",
-        "data": geojson
+      map.addSource('camaras', {
+        'type': 'geojson',
+        'data': geojson
       })
 
       map.addLayer({
-        "id": "camera-locations",
-        "source": "camaras",
-        "type": "circle",
-        "paint": {
-          "circle-color": "#00F"
+        'id': 'camera-locations',
+        'source': 'camaras',
+        'type': 'circle',
+        'paint': {
+          'circle-color': '#00F',
+          'circle-radius': 8
         }
       })
     })
 
     // Create a popup, but don't add it to the map yet.
     var popup = new mapboxgl.Popup({
-        closeButton: false,
-        closeOnClick: false
-    });
+      closeButton: false,
+      closeOnClick: false
+    })
 
-    map.on('mouseenter', 'camera-locations', function(e) {
-        // Change the cursor style as a UI indicator.
-        map.getCanvas().style.cursor = 'pointer';
+    map.on('mouseenter', 'camera-locations', function (e) {
+      // Change the cursor style as a UI indicator.
+      map.getCanvas().style.cursor = 'pointer'
 
-        var coordinates = e.features[0].geometry.coordinates.slice();
-        var description = e.features[0].properties.name;
+      var coordinates = e.features[0].geometry.coordinates.slice()
+      var url = e.features[0].properties.url
 
-        // Ensure that if the map is zoomed out such that multiple
-        // copies of the feature are visible, the popup appears
-        // over the copy being pointed to.
-        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+      // Ensure that if the map is zoomed out such that multiple
+      // copies of the feature are visible, the popup appears
+      // over the copy being pointed to.
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360
+      }
+
+      // Populate the popup and set its coordinates
+      // based on the feature found.
+      popup.setLngLat(coordinates)
+        .setHTML('<img style="max-width:512px" src="'+url+'"/>')
+        .addTo(map)
+    })
+
+    map.on('mouseleave', 'camera-locations', function () {
+      map.getCanvas().style.cursor = ''
+      popup.remove()
+    })
+
+    /*
+
+    readXML('predefinedLocations_radares_content.xml', function (response) {
+      // console.log(response)
+      const locations = response.d2LogicalModel.payloadPublication.predefinedLocationSet[0].predefinedLocation
+      const geojson = {
+        'type': 'FeatureCollection',
+        'features': locations.map(function (location) {
+          return {
+            'type': 'Feature',
+            'properties': {
+              'id': location.id,
+              'name': location.predefinedLocationName.value['#text']
+            },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.longitude), parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.latitude)]
+            }
+          }
+        })
+      }
+
+      map.addSource('radares', {
+        'type': 'geojson',
+        'data': geojson
+      })
+
+      map.addLayer({
+        'id': 'radar-locations',
+        'source': 'radares',
+        'type': 'circle',
+        'paint': {
+          'circle-color': '#F00'
         }
+      })
+    })
 
-        // Populate the popup and set its coordinates
-        // based on the feature found.
-        popup.setLngLat(coordinates)
-            .setHTML(description)
-            .addTo(map);
-    });
+    // Create a popup, but don't add it to the map yet.
+    var popup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false
+    })
 
-    map.on('mouseleave', 'camera-locations', function() {
-        map.getCanvas().style.cursor = '';
-        popup.remove();
-    });
+    map.on('mouseenter', 'radar-locations', function (e) {
+      // Change the cursor style as a UI indicator.
+      map.getCanvas().style.cursor = 'pointer'
 
-    //console.log(geojson)
-    //return geojson
+      var coordinates = e.features[0].geometry.coordinates.slice()
+      var description = e.features[0].properties.name
+
+      // Ensure that if the map is zoomed out such that multiple
+      // copies of the feature are visible, the popup appears
+      // over the copy being pointed to.
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360
+      }
+
+      // Populate the popup and set its coordinates
+      // based on the feature found.
+      popup.setLngLat(coordinates)
+        .setHTML(description)
+        .addTo(map)
+    })
+
+    map.on('mouseleave', 'radar-locations', function () {
+      map.getCanvas().style.cursor = ''
+      popup.remove()
+    })
+
+   readXML('predefinedLocations_paneles_content.xml', function (response) {
+      // console.log(response)
+      const locations = response.d2LogicalModel.payloadPublication.predefinedLocationSet.predefinedLocation
+      const geojson = {
+        'type': 'FeatureCollection',
+        'features': locations.map(function (location) {
+          return {
+            'type': 'Feature',
+            'properties': {
+              'id': location.id,
+              'name': location.predefinedLocationName.value['#text']
+            },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.longitude), parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.latitude)]
+            }
+          }
+        })
+      }
+
+      map.addSource('paneles', {
+        'type': 'geojson',
+        'data': geojson
+      })
+
+      map.addLayer({
+        'id': 'panel-locations',
+        'source': 'paneles',
+        'type': 'circle',
+        'paint': {
+          'circle-color': '#FC0'
+        }
+      })
+    })
+
+    // Create a popup, but don't add it to the map yet.
+    var popup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false
+    })
+
+    map.on('mouseenter', 'panel-locations', function (e) {
+      // Change the cursor style as a UI indicator.
+      map.getCanvas().style.cursor = 'pointer'
+
+      var coordinates = e.features[0].geometry.coordinates.slice()
+      var description = e.features[0].properties.name
+
+      // Ensure that if the map is zoomed out such that multiple
+      // copies of the feature are visible, the popup appears
+      // over the copy being pointed to.
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360
+      }
+
+      // Populate the popup and set its coordinates
+      // based on the feature found.
+      popup.setLngLat(coordinates)
+        .setHTML(description)
+        .addTo(map)
+    })
+
+    map.on('mouseleave', 'panel-locations', function () {
+      map.getCanvas().style.cursor = ''
+      popup.remove()
+    })
+    */
+
   })
 </script>
 </body>
