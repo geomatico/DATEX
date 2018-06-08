@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DATEX</title>
+    <script src="parseXML.js"></script>
+    <script src="readXML.js"></script>
+</head>
+<body>
+<script>
+readXML("predefinedLocations_camaras_content.xml", function(response) {
+  console.log(response)
+  const locations = response.d2LogicalModel.payloadPublication.predefinedLocationSet.predefinedLocation;
+  const coords = locations.map(function(location) {
+    return {
+      id: location.id,
+      name: location.predefinedLocationName.value["#text"],
+      coords: [parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.longitude), parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.latitude)]
+    }
+  })
+  console.log(coords)
+  return coords
+});
+</script>
+</body>
+</html>
