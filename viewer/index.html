@@ -8,19 +8,29 @@
 </head>
 <body>
 <script>
-readXML("predefinedLocations_camaras_content.xml", function(response) {
-  console.log(response)
-  const locations = response.d2LogicalModel.payloadPublication.predefinedLocationSet.predefinedLocation;
-  const coords = locations.map(function(location) {
-    return {
-      id: location.id,
-      name: location.predefinedLocationName.value["#text"],
-      coords: [parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.longitude), parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.latitude)]
+  readXML('predefinedLocations_camaras_content.xml', function (response) {
+    // console.log(response)
+    const locations = response.d2LogicalModel.payloadPublication.predefinedLocationSet.predefinedLocation
+    const geojson = {
+      'type': 'FeatureCollection',
+      'features': locations.map(function (location) {
+        return {
+          'type': 'Feature',
+          'properties': {
+            'id': location.id,
+            'name': location.predefinedLocationName.value['#text']
+          },
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.longitude), parseFloat(location.predefinedLocation.tpegpointLocation.point.pointCoordinates.latitude)]
+          }
+        }
+      })
     }
+
+    console.log(geojson)
+    return geojson
   })
-  console.log(coords)
-  return coords
-});
 </script>
 </body>
 </html>
